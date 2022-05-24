@@ -5,6 +5,8 @@ from tkinter import *
 from tkinter.messagebox import askyesno
 from ctypes import windll
 from PIL import ImageTk, Image
+from pystray import MenuItem
+import pystray
 import variables
 
 #no blur
@@ -38,12 +40,13 @@ class App(tk.Tk):
         self.geometry(f'{window_width}x{window_height}+{center_x}+{center_y}')
         self.resizable(False, False)
 
-        #hide titlebar
+        #- fake title bar -
         self.overrideredirect(True)
 
-        #fake titlebar
+        #self.columnconfigure(0, weight)
+        #titlebar
         title_bar = Frame(self)
-        title_bar.pack()
+        title_bar.grid(row=0,column=0, columnspan=5)
 
         #icon
         icon_img_size = (25, 25)
@@ -55,8 +58,8 @@ class App(tk.Tk):
         icon_label.grid(column=0, row=0, padx=0, pady=0)
         icon_label.image = icon_img
 
-        #title (srsly need bhetter code fo r this, if u just change font then u mess up entirte titlebar)
-        title_label = tk.Label(title_bar, bg="red", text=variables.app_name, font=variables.font, width=int(window_width/9.5))
+        #title (srsly need better code fo r this, if u just change font then u mess up entirte titlebar)
+        title_label = tk.Label(title_bar, text=variables.app_name, font=variables.font)
         title_label.grid(column=1, row=0, padx=0, pady=0)
 
         #make titlebar moveable
@@ -65,35 +68,52 @@ class App(tk.Tk):
 
         title_label.bind("<B1-Motion>", move_app)
 
-        #minimise button
-        taskbar_button = False
-        def minimise_window():
-            if taskbar_button == False:
-                self.wm_state('iconic')
-            else:
-                self.iconify()
-
         #close button
-        close_img = Image.open(r".\visual\close_button.png")
-        close_img   = close_img.resize((15, 15))
+        close_img = Image.open(variables.close_img)
+        close_img = close_img.resize((15, 15))
         close_img = ImageTk.PhotoImage(close_img)
 
-        close1_img = Image.open(r".\visual\close_button1.png")
+        close1_img = Image.open(variables.close_img1)
         close1_img = close1_img.resize((15, 15))
         close1_img = ImageTk.PhotoImage(close1_img)
 
-        #confirmation
-        def close_confirm():
+        # Define a function for quit the window
+        def quit_window(icon, item):
+            icon.stop()
+            self.destroy()
+
+        # Define a function to show the window again
+        def show_window(icon, item):
+            icon.stop()
+            self.after(0,self.deiconify())
+
+        #minimise button
+        def minimise_window():
+            #self.withdraw()
+            #menu=(MenuItem('Quit', quit_window), MenuItem('Show', show_window))
+            #icon=pystray.Icon("name", variables.icon, "title", variables.icon)
+            self.withdraw()
+            #self.deiconify()
+
+        minimise_button = tk.Button(title_bar, image = icon_img, command=minimise_window, bd=0)
+        minimise_button.image = icon_img
+        minimise_button.grid(column=2,row=0)
+
+        #confirmation, if not put in icon
+        taskbar_button = True
+
+        def close():
             if taskbar_button == False:
                 answer = askyesno(title='Confirmation',
                     message='Are you sure that you want to quit?')
                 if answer:
                     self.destroy()
             else:
-                pass
+                self.state("iconic")
+                #self.iconify()
 
-        close_button = tk.Button(title_bar, image = close_img, borderwidth=0, command=close_confirm, height=25, width=35)
-        close_button.grid(column=2, row=0, padx=0, pady=0)
+        close_button = tk.Button(title_bar, image = close_img, borderwidth=0, command=close, height=25, width=35)
+        close_button.grid(column=3, row=0, padx=0, pady=0)
 
         #hover over = change colour
         def on_enter(i):
@@ -114,24 +134,24 @@ class App(tk.Tk):
 
         #labels
         ws_msg = tk.Label(self, text="Websites to be blocked are:")
-        ws_msg.pack()
+        ws_msg.grid(row=1, column=0)
         b_s = tk.Label(self, text="Block starts at")
-        b_s.pack()
+        b_s.grid(row=2, column=0)
         b_e = tk.Label(self, text="Block ends at:")
-        b_e.pack()
+        b_e.grid(row=3, column=0)
 
         #entries
         ws_entry=tk.Entry(self, textvariable = ws_var,
             font = (variables.font,10,'normal'))
-        ws_entry.pack()
+        ws_entry.grid(row=1, column=1)
 
         b_s_entry=tk.Entry(self, textvariable = b_s_var,
             font = (variables.font,10,'normal'))
-        b_s_entry.pack()
+        b_s_entry.grid(row=2, column=1)
 
         b_e_entry=tk.Entry(self, textvariable = b_e_var,
             font = (variables.font,10,'normal'))
-        b_e_entry.pack()
+        b_e_entry.grid(row=3, column=1)
 
         def save():
             websites=ws_var.get()
@@ -143,12 +163,7 @@ class App(tk.Tk):
 
         # save button
         save_btn=tk.Button(self, text = 'Save', command = save, bg=variables.green, borderwidth=0, fg="white")
-        save_btn.pack()
-
-
-#window dimensions
-
-
+        save_btn.grid(row=4, column=0)
 
 # -- time calculations --
 current_time = now.strftime("%H:%M:%S")
@@ -167,7 +182,7 @@ tdelta1 =  datetime.strptime(block_end, "%H:%M:%S") - datetime.strptime(current_
 tdelta2 = datetime.strptime(block_start, "%H:%M:%S") - datetime.strptime(current_time, "%H:%M:%S")
 
 
-#toasties!
+#--toasts--
 if int(day) < int(day) + 1 and current_time >= "21:00" or int(day) < int(day) + 1 and current_time < "19:00":
     # block toasts
     if len(variables.websites) > 1:
